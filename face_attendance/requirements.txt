@@ -3,3 +3,5 @@ opencv-python
 face-recognition
 numpy
 pandas
+git+https://github.com/ageitgey/face_recognition_models
+setuptools
