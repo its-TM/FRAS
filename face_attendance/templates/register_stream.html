@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+    <style>
+        .registration-container {
+            text-align: center;
+            padding: 20px;
+        }
+        .camera-feed {
+            border: 5px solid #2c3e50;
+            border-radius: 8px;
+            display: inline-block;
+            overflow: hidden;
+            background-color: #000;
+            margin: 20px 0;
+        }
+        .camera-feed img {
+            display: block;
+            width: 640px;
+            height: 480px;
+        }
+        .button-group {
+            margin-top: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 0 10px;
+            font-size: 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #229954;
+        }
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+        .info-text {
+            font-size: 14px;
+            color: #555;
+            margin: 10px 0;
+        }
+    </style>
+
+    <div class="registration-container">
+        <h1>Registering User: {{ name }}</h1>
+        <p><strong>User ID:</strong> {{ user_id }}</p>
+        <p>Position your face in the center of the frame. 10 samples will be automatically captured.</p>
+        
+        <div class="camera-feed">
+            <img src="{{ url_for('registration_video_feed', user_id=user_id) }}" alt="Camera Feed">
+        </div>
+        
+        <p class="info-text">Capturing images for face recognition. Make sure you're well-lit and facing the camera.</p>
+        
+        <div class="button-group">
+            <form id="completeForm" style="display: inline;">
+                <button type="button" onclick="completeRegistration()" class="btn btn-success">
+                    Complete Registration & Encode Faces
+                </button>
+            </form>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+
+    <script>
+        function completeRegistration() {
+            window.location.href = "{{ url_for('complete_registration', user_id=user_id) }}";
+        }
+    </script>
+{% endblock %}

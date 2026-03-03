@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
 from utils.db_utils import init_db, add_user, get_today_attendance
-from utils.face_utils import capture_user_images, encode_user_faces, generate_face_recognition_frames
+from utils.face_utils import capture_user_images, encode_user_faces, generate_face_recognition_frames, generate_registration_frames
 import datetime
 import os
 import time
@@ -29,17 +29,30 @@ def register():
             return redirect(url_for('register'))
             
         add_user(user_id, name)
-        success = capture_user_images(user_id)
-        
-        if success:
-            encode_user_faces()
-            flash(f"User {name} successfully registered!", "success")
-        else:
-            flash(f"Failed to capture images for {name}.", "error")
-            
-        return redirect(url_for('index'))
+        # Redirect to streaming registration page
+        return redirect(url_for('register_stream', user_id=user_id, name=name))
         
     return render_template('register.html')
+
+@app.route('/register_stream/')
+def register_stream():
+    user_id = request.args.get('user_id')
+    name = request.args.get('name')
+    return render_template('register_stream.html', user_id=user_id, name=name)
+
+@app.route('/registration_video_feed/<user_id>')
+def registration_video_feed(user_id):
+    return Response(generate_registration_frames(user_id),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/complete_registration/<user_id>')
+def complete_registration(user_id):
+    # Encode the faces and complete registration
+    if encode_user_faces():
+        flash(f"User successfully registered!", "success")
+    else:
+        flash(f"Failed to encode faces.", "error")
+    return redirect(url_for('index'))
 
 @app.route('/start_attendance', methods=['GET', 'POST'])
 def start_attendance():

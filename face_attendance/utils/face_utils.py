@@ -43,13 +43,19 @@ def capture_user_images(user_id, num_samples=10):
                 count += 1
                 print(f"[INFO] Captured image {count}/{num_samples}")
 
-        cv2.imshow("Registering User - Press 'q' to quit", frame)
-        
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        try:
+            cv2.imshow("Registering User - Press 'q' to quit", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        except cv2.error:
+            # Headless environment - no display available, just continue capturing
+            print("[WARNING] Display unavailable (headless environment). Images are being captured silently.")
 
     cap.release()
-    cv2.destroyAllWindows()
+    try:
+        cv2.destroyAllWindows()
+    except cv2.error:
+        pass
     return count == num_samples
 
 def encode_user_faces():
@@ -155,6 +161,56 @@ def generate_face_recognition_frames(subject="General", app=None):
         for (top, right, bottom, left, name) in recognized_faces:
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
             cv2.putText(frame, name, (left, max(0, top-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        # Encode frame as JPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame_bytes = buffer.tobytes()
+
+        # Yield the output frame in byte format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+    cap.release()
+
+def generate_registration_frames(user_id, num_samples=10):
+    """
+    Generator for web-based video streaming during registration.
+    Captures face samples and yields frames with visual feedback.
+    """
+    save_path = os.path.join('dataset', user_id)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    cap = cv2.VideoCapture(0)
+    count = 0
+
+    while count < num_samples:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Detect face for visual feedback and cropping
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        face_locations = face_recognition.face_locations(rgb_frame)
+
+        faces_detected = len(face_locations)
+
+        for (top, right, bottom, left) in face_locations:
+            # Draw rectangle on the live preview
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            
+            # Save the cropped face image
+            face_img = frame[top:bottom, left:right]
+            if face_img.size > 0:
+                img_name = f"{user_id}_{count}.jpg"
+                cv2.imwrite(os.path.join(save_path, img_name), face_img)
+                count += 1
+
+        # Add text overlay showing progress
+        progress_text = f"Captured: {count}/{num_samples}"
+        status_text = "Face detected" if faces_detected > 0 else "Position face in frame"
+        cv2.putText(frame, progress_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, status_text, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if faces_detected > 0 else (0, 0, 255), 2)
 
         # Encode frame as JPEG
         ret, buffer = cv2.imencode('.jpg', frame)
